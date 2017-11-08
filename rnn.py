@@ -78,7 +78,7 @@ def inverse_scale_y(Y, scaler):
 X = get_data()
 X, Y, scaler = preprocess_data(X)
 
-kf = KFold(n_splits=5)
+kf = KFold(n_splits=4)
 i = 0
 y_err = []
 
