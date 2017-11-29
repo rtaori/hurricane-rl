@@ -61,7 +61,7 @@ class HurricaneFeatureExpander:
             for x_i in x:
                 temp_data.add(year, season, x_i)
 
-        # 2. Creates the temperature feature column
+        # 2. Create the temperature feature column
         temperature_feature = [temp_data.get(x) for x in self.data_matrix]
         temperature_feature = np.array(temperature_feature).reshape(-1,1)
 
