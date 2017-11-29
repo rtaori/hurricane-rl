@@ -21,6 +21,7 @@ def get_data():
 	X = []
 
 	for filename in os.listdir('data'):
+		if filename[-3:] != 'csv': continue
 		file = list(open('data/' + filename, 'r'))
 		x = [line.strip().split(',') for line in file[1:]] # ignore header, split up csv
 		x = np.array(x)
