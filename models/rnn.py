@@ -11,6 +11,7 @@ from keras.layers import Dense, Activation
 from keras.layers.recurrent import LSTM
 from keras.layers.core import Masking, RepeatVector
 from keras.layers.wrappers import TimeDistributed
+from feature_expander import HurricaneFeatureExpander
 
 hurricane_categories = ['TROPICAL STORM', 'TROPICAL DEPRESSION', 'HURRICANE-1', 'HURRICANE-2', 'HURRICANE-3', 'EXTRATROPICAL STORM', 'EXTRATROPICAL DEPRESSION', 'HURRICANE-4', 'EXTRATROPICAL STORM-1', 'EXTRATROPICAL STORM-2', 'HURRICANE-5', 'SUBTROPICAL DEPRESSION', 'SUBTROPICAL STORM', 'XXX', 'DISTURBANCE', 'TROPICAL WAVE', 'LOW', 'TYPHOON-1', 'TYPHOON-2', 'TYPHOON-3', 'TYPHOON-4', 'SUPER TYPHOON-5', 'SUPER TYPHOON-4']
 
@@ -22,18 +23,33 @@ def get_data():
 
 	for filename in os.listdir('data'):
 		if filename[-3:] != 'csv': continue
+		if filename.split('-')[0] != 'w_pacific': continue
 		file = list(open('data/' + filename, 'r'))
 		x = [line.strip().split(',') for line in file[1:]] # ignore header, split up csv
+
+		year = filename.split('-')[1]
+		for i, x_i in enumerate(x):
+			month = x_i[2].split('/')[0]
+			x_i.insert(3, month)
+			x_i.insert(3, year)
+			x[i] = x_i
+
 		x = np.array(x)
-
-		x = np.delete(x, 2, axis=1) # time
+		x = np.delete(x, 2, axis=1) # time (complete)
 		x[x == '-'] = 0 # null values
-
 		one_hot = label_binarizer.transform(x[:, -1]) # hurricane to_categorical
 		x = np.delete(x, -1, axis=1)
 		x = np.hstack((x, one_hot))
+		x = x.astype(np.float64)
 
-		X.append(x.astype(np.float64))
+		# Expand features
+		expander = HurricaneFeatureExpander(x)
+		expander.add_is_land()
+		#expander.add_temperature()
+		x = expander.get_data_matrix()
+		print(filename, 'expanded')
+
+		X.append(x)
 
 	return X
 
@@ -89,7 +105,7 @@ for train_index, test_index in kf.split(X):
 	y_train, y_test = Y[train_index], Y[test_index]
 
 	model = get_model(X_train.shape[1:], y_train.shape[1:])
-	history = model.fit(X_train, y_train, batch_size=16, epochs=20, validation_data=(X_test, y_test), shuffle=False)
+	history = model.fit(X_train, y_train, batch_size=16, epochs=10, validation_data=(X_test, y_test), shuffle=False)
 
 	plt.plot(history.history['loss'], label='train'+str(i))
 	plt.plot(history.history['val_loss'], label='test'+str(i))
