@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import numpy as np
 from random import shuffle
 import matplotlib.pyplot as plt
@@ -12,10 +13,16 @@ from keras.layers.recurrent import LSTM
 from keras.layers.core import Masking, RepeatVector
 from keras.layers.wrappers import TimeDistributed
 from feature_expander import HurricaneFeatureExpander
+from data_structure import TemperatureDictionary
 
 hurricane_categories = ['TROPICAL STORM', 'TROPICAL DEPRESSION', 'HURRICANE-1', 'HURRICANE-2', 'HURRICANE-3', 'EXTRATROPICAL STORM', 'EXTRATROPICAL DEPRESSION', 'HURRICANE-4', 'EXTRATROPICAL STORM-1', 'EXTRATROPICAL STORM-2', 'HURRICANE-5', 'SUBTROPICAL DEPRESSION', 'SUBTROPICAL STORM', 'XXX', 'DISTURBANCE', 'TROPICAL WAVE', 'LOW', 'TYPHOON-1', 'TYPHOON-2', 'TYPHOON-3', 'TYPHOON-4', 'SUPER TYPHOON-5', 'SUPER TYPHOON-4']
 
 def get_data():
+	print("initializing temp dict")
+	temp_data = TemperatureDictionary()
+	temp_data.initialize()
+	print("done")
+
 	label_binarizer = LabelBinarizer()
 	label_binarizer.fit(hurricane_categories)
 
@@ -42,16 +49,28 @@ def get_data():
 		x = np.hstack((x, one_hot))
 		x = x.astype(np.float64)
 
-		# Expand features
-		expander = HurricaneFeatureExpander(x)
-		expander.add_is_land()
-		#expander.add_temperature()
-		x = expander.get_data_matrix()
-		print(filename, 'expanded')
-
 		X.append(x)
 
+	n = len(X)
+	for i, x in enumerate(X):
+		# Expand features
+		expander = HurricaneFeatureExpander(x, temp_data)
+		expander.add_is_land()
+		expander.add_temperature()
+		x = expander.get_data_matrix()
+		X[i] = x
+		print(i + 1, '/', n, 'expanded')
+
 	return X
+
+def data_exists():
+	return Path('dataset.npy').is_file()
+
+def load_data():
+	return np.load('dataset.npy')
+
+def save_data(data):
+	np.save('dataset.npy', data)
 
 def preprocess_data(X_in, y_dim=4):
 	shuffle(X_in)
@@ -74,8 +93,8 @@ def preprocess_data(X_in, y_dim=4):
 	X = pad_sequences(X)
 	return np.array(X), np.array(Y), scaler
 
-	split = int(X.shape[0] * test_split)
-	return (X[split:], Y[split:]), (X[:split], Y[:split])
+	# split = int(X.shape[0] * test_split)
+	# return (X[split:], Y[split:]), (X[:split], Y[:split])
 
 def get_model(input_shape, output_shape):
 	model = Sequential()
@@ -89,10 +108,16 @@ def get_model(input_shape, output_shape):
 
 def inverse_scale_y(Y, scaler):
 	Y = Y.reshape((-1, 2))
-	Y = np.hstack((Y, np.zeros((Y.shape[0], 25))))
+	Y = np.hstack((Y, np.zeros((Y.shape[0], 27))))
 	return scaler.inverse_transform(Y)[:,:2]
 
-X = get_data()
+if data_exists():
+	print("Data loaded from memory.")
+	X = load_data()
+else:
+	X = get_data()
+	save_data(X)
+
 X, Y, scaler = preprocess_data(X)
 
 kf = KFold(n_splits=4)
@@ -105,7 +130,7 @@ for train_index, test_index in kf.split(X):
 	y_train, y_test = Y[train_index], Y[test_index]
 
 	model = get_model(X_train.shape[1:], y_train.shape[1:])
-	history = model.fit(X_train, y_train, batch_size=16, epochs=10, validation_data=(X_test, y_test), shuffle=False)
+	history = model.fit(X_train, y_train, batch_size=16, epochs=20, validation_data=(X_test, y_test), shuffle=False)
 
 	plt.plot(history.history['loss'], label='train'+str(i))
 	plt.plot(history.history['val_loss'], label='test'+str(i))

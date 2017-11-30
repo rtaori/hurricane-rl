@@ -1,3 +1,4 @@
+import os
 from collections import deque
 import numpy as np
 
@@ -6,10 +7,25 @@ class TemperatureDictionary:
     DECADES = ['55-64', '65-74', '75-84', '85-94', '95-04', '05-12']
     SEASONS = ['winter', 'spring', 'summer', 'autumn']
     LAT_LON_NUDGE = [[0.25, 0], [-0.25, 0], [0, 0.25], [0, -0.25]]
-    VALID_DECIMALS = [0.125, 0.375, 0.625, 0.850]
+    VALID_DECIMALS = [0.125, 0.375, 0.625, 0.875]
 
     def __init__(self):
         self.temp_data = {d : {s: {} for s in self.SEASONS} for d in self.DECADES}
+
+    def initialize(self):
+        for filename in os.listdir('data/ocean_temp'):
+            if filename[-3:] != 'csv': continue
+            file = list(open('data/ocean_temp/' + filename, 'r', encoding="latin-1"))
+            x = [line.strip().split(',')[:3] for line in file[2:]]
+            x = np.array(x)
+            x = np.delete(x, np.where(x == ''), 0)
+
+            metadata = filename.split('.')[0].split('_')[-1].split('-')
+            year = int(metadata[0])
+            season = metadata[-1]
+
+            for x_i in x:
+                self.add(year, season, x_i)
 
     def add(self, year, season, data_row):
         decade = self._get_decade(year)
@@ -44,7 +60,9 @@ class TemperatureDictionary:
     def _get_season(self, month):
         """Assumes northern hemisphere."""
         if month < 1 or month > 12:
-            raise ValueError('Month {0} is not valid!'.format(month))
+            #raise ValueError('Month {0} is not valid!'.format(month))
+            print('Month {0} is not valid! Adapting...'.format(month))
+            month = (month % 12) + 1
         if month in [4, 5, 6]: # April - June
             return 'spring'
         if month in [7, 8, 9]: # July - September

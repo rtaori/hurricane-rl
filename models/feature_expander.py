@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from mpl_toolkits.basemap import Basemap # NOTE: This needs to be installed
                                          # with "conda install basemap", not pip
@@ -11,13 +12,14 @@ class HurricaneFeatureExpander:
 
     """
 
-    def __init__(self, data_matrix):
+    def __init__(self, data_matrix, temp_data):
         """
         Initializes the Hurricane Feature Expander with a data matrix.
 
         It assumes the first features are as follows: lat, lon, year, month.
         """
         self.data_matrix = data_matrix
+        self.temp_data = temp_data
         self.bm = Basemap()
 
     def get_data_matrix(self):
@@ -44,26 +46,9 @@ class HurricaneFeatureExpander:
         Assumes `lat` is column 0, `lon` is column 1, `year` is column 2, and
         `month` is column 3 in the data matrix.
         """
-        # 1. Create the temperature dictionary
-        temp_data = TemperatureDictionary()
-
-        for filename in os.listdir('data/ocean_temp'):
-            if filename[-3:] != 'csv': continue
-            file = list(open('data/ocean_temp/' + filename, 'r', encoding="latin-1"))
-            x = [line.strip().split(',')[:3] for line in file[2:]]
-            x = np.array(x)
-            x = np.delete(x, np.where(x == ''), 0)
-
-            metadata = filename.split('.')[0].split('_')[-1].split('-')
-            year = int(metadata[0])
-            season = metadata[-1]
-
-            for x_i in x:
-                temp_data.add(year, season, x_i)
-
-        # 2. Create the temperature feature column
-        temperature_feature = [temp_data.get(x) for x in self.data_matrix]
+        # 1. Create the temperature feature column
+        temperature_feature = [self.temp_data.get(x) for x in self.data_matrix]
         temperature_feature = np.array(temperature_feature).reshape(-1,1)
 
-        # 3. Append the temperature feature column
+        # 2. Append the temperature feature column
         np.hstack((self.data_matrix, temperature_feature))
