@@ -71,6 +71,7 @@ class TemperatureDictionary:
 
     def _bfs_find(self, start, success_fn):
         visited = set()
+        visited.add(start)
         q = deque()
         q.append(start)
         while q:
@@ -80,3 +81,4 @@ class TemperatureDictionary:
             for v in self._get_neighbors(u):
                 if v not in visited:
                     q.append(v)
+                    visited.add(v)

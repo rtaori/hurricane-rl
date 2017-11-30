@@ -1,7 +1,7 @@
 import numpy as np
 from mpl_toolkits.basemap import Basemap # NOTE: This needs to be installed
                                          # with "conda install basemap", not pip
-from utils.data_structure import TemperatureDictionary
+from data_structure import TemperatureDictionary
 
 class HurricaneFeatureExpander:
     """
@@ -22,7 +22,7 @@ class HurricaneFeatureExpander:
 
     def get_data_matrix(self):
         """Returns the data matrix at the current state."""
-        return self.dataframe
+        return self.data_matrix
 
     def add_is_land(self):
         """
